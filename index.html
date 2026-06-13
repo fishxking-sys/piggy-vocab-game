@@ -79,52 +79,52 @@
             <div id="slots-container" class="flex flex-wrap justify-center gap-2 mb-10 min-h-[3.5rem]"></div>
             <div id="pool-container" class="flex flex-wrap justify-center gap-2"></div>
             
+            <!-- 成功區塊與獎勵橫幅 -->
             <div id="success-area" class="hidden-phase text-center mt-6 w-full animate-fade-in-up">
                 <div id="daily-goal-celebration" class="hidden-phase w-full text-center bg-gradient-to-r from-emerald-50 to-emerald-100 border-2 border-emerald-400 p-4 rounded-2xl mb-6 shadow-md">
                     <span class="text-xl font-black text-emerald-600">🌟 恭喜達成今日 5 字目標！ 🌟</span>
                 </div>
                 <div id="cash-reward-celebration" class="hidden-phase w-full text-center bg-gradient-to-r from-amber-100 to-yellow-300 border-4 border-yellow-500 p-6 rounded-2xl mb-6 shadow-xl animate-bounce-scale">
-                    <span class="text-2xl font-black text-rose-600 block mb-1">🎉 獎勵解鎖！ 🎉</span>
-                    <span class="text-lg font-bold text-amber-800 block">達成連續 5 日挑戰，獲得 $100 現金獎賞！💰</span>
+                    <span class="text-2xl font-black text-rose-600 block mb-2">🎉 連續 5 日達成！獲得 $100 獎賞！ 🎉</span>
+                    <span class="text-lg font-bold text-amber-800 block mb-4">額外觸發：隨機抽查小測，最高可再獲 $50 獎金！💰</span>
+                    <button onclick="startQuiz()" class="w-full py-3 bg-rose-500 text-white font-bold rounded-xl text-lg hover:bg-rose-600 active:scale-95 transition-transform shadow-md">
+                        立即開始挑戰 ⚔️
+                    </button>
                 </div>
 
                 <div class="text-2xl font-bold text-emerald-500 mb-6">🎉 完美拼出！</div>
                 <button onclick="pickNextWord()" class="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg hover:bg-emerald-600 transition-transform active:scale-95 shadow-lg shadow-emerald-200">學習下一題</button>
             </div>
         </div>
-    </main>
 
-    <div id="calendar-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity">
-        <div class="bg-white w-11/12 max-w-md h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50">
-                <h2 class="text-2xl font-black text-amber-600 flex items-center gap-2">💰 獎勵日曆</h2>
-                <button onclick="closeCalendar()" class="p-2 bg-white text-slate-600 rounded-full hover:bg-rose-100 hover:text-rose-600 shadow-sm transition-colors">✖</button>
+        <!-- 新增：小測階段 (Quiz Phase) -->
+        <div id="quiz-phase" class="w-full hidden-phase animate-fade-in-up">
+            <div id="quiz-card" class="bg-white p-8 rounded-3xl shadow-sm text-center border-4 border-amber-300 relative">
+                <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-400 text-white px-4 py-1 rounded-full font-bold text-sm shadow-md">
+                    <span id="quiz-progress">第 1 / 10 題</span>
+                </div>
+                <div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 mt-2">請選出正確的中文意思</div>
+                <h2 id="quiz-word" class="text-4xl font-black text-indigo-600 mb-8 tracking-wider">WORD</h2>
+                
+                <div id="quiz-options" class="flex flex-col gap-3">
+                    <!-- 答案按鈕由 JS 生成 -->
+                </div>
             </div>
-            <div class="p-6 overflow-y-auto flex flex-col gap-6">
-                <div class="flex gap-4">
-                    <div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-                        <div class="text-sm font-bold text-slate-500 mb-1">虛擬錢包</div>
-                        <div class="text-3xl font-black text-emerald-500">$<span id="modal-cash-display">0</span></div>
-                    </div>
-                    <div class="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-                        <div class="text-sm font-bold text-amber-600 mb-1">連續打卡</div>
-                        <div class="text-3xl font-black text-amber-500"><span id="modal-streak-display">0</span> 日</div>
-                    </div>
+
+            <div id="quiz-result" class="hidden-phase bg-white p-8 rounded-3xl shadow-lg text-center border-4 border-emerald-400 mt-4">
+                <div class="text-6xl mb-4">🏆</div>
+                <h2 class="text-3xl font-black text-slate-800 mb-2">小測完成！</h2>
+                <p class="text-lg font-bold text-slate-600 mb-4">你答對了 <span id="quiz-final-score" class="text-emerald-500 text-2xl">0</span> 題</p>
+                <div class="bg-amber-100 p-4 rounded-xl mb-6 border border-amber-300">
+                    <span class="text-amber-700 font-bold">獲得現金獎勵</span>
+                    <div class="text-4xl font-black text-amber-500">+$<span id="quiz-earned-cash">0</span></div>
                 </div>
-                <div class="bg-white border-2 border-slate-100 rounded-2xl p-5">
-                    <div class="text-center font-bold text-slate-700 mb-4">下一階段獎賞 ($100) 距離：</div>
-                    <div class="flex justify-between items-center relative z-10" id="streak-circles-container"></div>
-                    <div class="h-2 bg-slate-100 rounded-full -mt-5 relative z-0 mx-4"></div>
-                </div>
-                <div class="bg-white border-2 border-slate-100 rounded-2xl p-5">
-                    <div class="font-bold text-slate-700 mb-3 text-center">最近 7 日打卡紀錄</div>
-                    <div class="flex justify-between" id="mini-calendar-container"></div>
-                </div>
+                <button onclick="closeQuiz()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl text-lg hover:bg-indigo-700 transition-transform active:scale-95">返回學習</button>
             </div>
         </div>
-    </div>
+    </main>
 
-    <div id="word-bank-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity">
+    <!-- UI Modal: 獎勵日曆 -->
         <div class="bg-white w-11/12 max-w-lg md:max-w-2xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h2 class="text-2xl font-black text-indigo-600">我的專屬字詞庫</h2>
@@ -143,6 +143,9 @@
         let wordDatabase = [], availableWords = [], currentWord = null, gameState = 'loading', selectedLetters = [], scrambledLetters = [];
         const DAILY_TARGET = 5;
         let dailyCount = 0, wordBank = [], completedHistory = {}, currentStreak = 0, totalCash = 0;
+        
+        // 新增：小測相關變數
+        let quizWords = [], currentQuizIndex = 0, quizScore = 0, quizOptions = [];
 
         // --- 工具與存儲邏輯 ---
         function getLocalYMD(dateObj) {
@@ -230,7 +233,7 @@
             const wordExists = wordBank.some(item => item.word.toUpperCase() === currentWord.word.toUpperCase());
             if (!wordExists) {
                 wordBank.push({
-                    word: currentWord.word.toUpperCase(), chinese: currentWord.chinese, hint: currentWord.hint, pos: currentWord.pos, hint_chinese: currentWord.hint_chinese || ''
+                    word: currentWord.word.toUpperCase(), chinese: currentWord.chinese, hint: currentWord.hint, pos: currentWord.pos, hint_chinese: currentWord.hint_chinese || '', date: getLocalYMD(new Date())
                 });
                 localStorage.setItem('ngsl_word_bank', JSON.stringify(wordBank));
             }
@@ -246,8 +249,11 @@
                 currentStreak = calculateStreak(completedHistory);
                 
                 if (currentStreak > 0 && currentStreak % 5 === 0) {
+                    // 保留原本的 $100 基本獎勵
                     totalCash += 100;
                     localStorage.setItem('ngsl_cash', totalCash);
+                    
+                    // 顯示包含小測按鈕的祝賀橫幅
                     document.getElementById('cash-reward-celebration').classList.remove('hidden-phase');
                     fireConfetti(true); 
                 } else {
@@ -370,21 +376,36 @@
 
         function renderSpelling() {
             document.getElementById('slots-container').innerHTML = currentWord.word.split('').map((_, i) => `<div class="w-12 h-14 md:w-16 md:h-16 bg-slate-200 text-slate-800 text-2xl font-black rounded-2xl flex items-center justify-center shadow-inner transition-all">${selectedLetters[i]?.char || '_'}</div>`).join('');
-            document.getElementById('pool-container').innerHTML = scrambledLetters.map((l, i) => `<button onclick="pick(${i})" class="w-12 h-14 md:w-16 md:h-16 bg-white border-2 border-slate-200 text-slate-700 text-2xl font-black rounded-2xl shadow-sm hover:border-indigo-400 hover:text-indigo-600 hover:-translate-y-1 transition-all active:scale-95">${l.char}</button>`).join('');
+            document.getElementById('pool-container').innerHTML = scrambledLetters.map((l, i) => `<button id="pool-btn-${i}" onclick="pick(${i})" class="w-12 h-14 md:w-16 md:h-16 bg-white border-2 border-slate-200 text-slate-700 text-2xl font-black rounded-2xl shadow-sm hover:border-indigo-400 hover:text-indigo-600 hover:-translate-y-1 transition-all active:scale-95">${l.char}</button>`).join('');
         }
 
         function pick(idx) {
             if(selectedLetters.length < currentWord.word.length) {
-                selectedLetters.push(scrambledLetters[idx]);
-                scrambledLetters.splice(idx, 1);
-                
-                if(selectedLetters.length === currentWord.word.length) {
-                    document.getElementById('pool-container').classList.add('hidden-phase');
-                    document.getElementById('success-area').classList.remove('hidden-phase');
-                    speakWord();
-                    handleWordSuccess(); // 儲存紀錄、計連續日數及派彩紙
+                // 核對字母是否正確 (小階對比)
+                const targetChar = currentWord.word[selectedLetters.length].toLowerCase();
+                const pickedChar = scrambledLetters[idx].char.toLowerCase();
+
+                if (pickedChar === targetChar) {
+                    selectedLetters.push(scrambledLetters[idx]);
+                    scrambledLetters.splice(idx, 1);
+                    
+                    if(selectedLetters.length === currentWord.word.length) {
+                        document.getElementById('pool-container').classList.add('hidden-phase');
+                        document.getElementById('success-area').classList.remove('hidden-phase');
+                        speakWord();
+                        handleWordSuccess(); // 儲存紀錄、計連續日數
+                    }
+                    renderSpelling();
+                } else {
+                    // 如果錯誤，觸發震動同變紅效果
+                    const btn = document.getElementById(`pool-btn-${idx}`);
+                    if (btn) {
+                        btn.classList.add('animate-shake', 'bg-rose-50', 'border-rose-400', 'text-rose-500');
+                        setTimeout(() => {
+                            if (btn) btn.classList.remove('animate-shake', 'bg-rose-50', 'border-rose-400', 'text-rose-500');
+                        }, 400);
+                    }
                 }
-                renderSpelling();
             }
         }
 
@@ -413,6 +434,106 @@
         }
         
         function startSpelling() { gameState = 'spelling'; updateUI(); }
+        
+        // --- 小測系統邏輯 ---
+        function startQuiz() {
+            document.getElementById('spelling-phase').classList.add('hidden-phase');
+            document.getElementById('quiz-phase').classList.remove('hidden-phase');
+            document.getElementById('quiz-card').classList.remove('hidden-phase');
+            document.getElementById('quiz-result').classList.add('hidden-phase');
+            
+            // 抽取最近加入字庫的字 (大約取近25個，相等於連續5日)
+            let recentWords = wordBank.slice(-25);
+            if(recentWords.length === 0) recentWords = [...wordDatabase]; // 防呆設計：防止初次測試時字庫無字
+            
+            // 從中隨機抽 10 個
+            quizWords = recentWords.sort(() => Math.random() - 0.5).slice(0, Math.min(10, recentWords.length));
+            currentQuizIndex = 0;
+            quizScore = 0;
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            if (currentQuizIndex >= quizWords.length) {
+                endQuiz();
+                return;
+            }
+            const qWord = quizWords[currentQuizIndex];
+            
+            // 從大字庫中抽 3 個錯誤選項
+            let wrongOptions = wordDatabase.filter(w => w.chinese !== qWord.chinese);
+            wrongOptions = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 3);
+            
+            quizOptions = [qWord, ...wrongOptions].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('quiz-progress').innerText = `第 ${currentQuizIndex + 1} / ${quizWords.length} 題`;
+            document.getElementById('quiz-word').innerText = qWord.word.toUpperCase();
+            
+            const optionsHtml = quizOptions.map((opt, idx) => `
+                <button id="quiz-btn-${idx}" onclick="answerQuiz(${idx})" class="w-full py-4 px-2 text-lg font-bold text-slate-700 bg-white border-2 border-slate-200 rounded-xl hover:border-indigo-400 hover:text-indigo-600 transition-colors active:scale-95">
+                    ${opt.chinese}
+                </button>
+            `).join('');
+            document.getElementById('quiz-options').innerHTML = optionsHtml;
+        }
+
+        function answerQuiz(idx) {
+            const selected = quizOptions[idx];
+            const correct = quizWords[currentQuizIndex];
+            
+            // 鎖定所有按鈕防止連按
+            for(let i=0; i<quizOptions.length; i++) {
+                document.getElementById(`quiz-btn-${i}`).disabled = true;
+            }
+
+            const btn = document.getElementById(`quiz-btn-${idx}`);
+            if(selected.chinese === correct.chinese) {
+                quizScore++; // 答對加分
+                btn.classList.replace('bg-white', 'bg-emerald-500');
+                btn.classList.replace('text-slate-700', 'text-white');
+                btn.classList.replace('border-slate-200', 'border-emerald-600');
+            } else {
+                btn.classList.replace('bg-white', 'bg-rose-500');
+                btn.classList.replace('text-slate-700', 'text-white');
+                btn.classList.replace('border-slate-200', 'border-rose-600');
+                
+                // 標示正確答案
+                const correctIdx = quizOptions.findIndex(o => o.chinese === correct.chinese);
+                const correctBtn = document.getElementById(`quiz-btn-${correctIdx}`);
+                if(correctBtn) {
+                    correctBtn.classList.replace('bg-white', 'bg-emerald-500');
+                    correctBtn.classList.replace('text-slate-700', 'text-white');
+                    correctBtn.classList.replace('border-slate-200', 'border-emerald-600');
+                }
+            }
+            
+            // 延遲1.2秒後跳下一題
+            setTimeout(() => {
+                currentQuizIndex++;
+                renderQuizQuestion();
+            }, 1200);
+        }
+
+        function endQuiz() {
+            const earned = quizScore * 5; // 每題 $5
+            totalCash += earned;
+            localStorage.setItem('ngsl_cash', totalCash);
+            updateRewardsUI();
+            
+            document.getElementById('quiz-card').classList.add('hidden-phase');
+            document.getElementById('quiz-result').classList.remove('hidden-phase');
+            document.getElementById('quiz-final-score').innerText = quizScore;
+            document.getElementById('quiz-earned-cash').innerText = earned;
+            fireConfetti(earned > 0);
+        }
+        
+        function closeQuiz() {
+            document.getElementById('quiz-phase').classList.add('hidden-phase');
+            document.getElementById('spelling-phase').classList.remove('hidden-phase');
+            document.getElementById('cash-reward-celebration').classList.add('hidden-phase');
+            pickNextWord(); // 關閉小測後直接進入下一個字的學習
+        }
+
         window.onload = initGame;
     </script>
 </body>
