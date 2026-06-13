@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NGSL 詞彙構築器 - 終極 AI 小測版</title>
+    <title>NGSL 詞彙構築器 - Firebase 雲端版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <style>
         .hidden-phase { display: none !important; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -26,8 +30,11 @@
     <header class="w-full max-w-2xl bg-white p-5 rounded-3xl shadow-sm mb-6 relative overflow-hidden">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold text-indigo-600 flex items-center gap-2 mb-1">豬豬詞彙挑戰</h1>
-                <span id="db-status" class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-1 rounded-md">讀取中...</span>
+                <h1 class="text-xl md:text-2xl font-bold text-indigo-600 flex items-center gap-2 mb-1">
+                    豬豬詞彙挑戰 
+                    <span id="student-name-display" class="text-sm bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">未登入</span>
+                </h1>
+                <span id="db-status" class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-1 rounded-md">雲端連線中...</span>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button onclick="openCalendar()" class="flex items-center gap-2 text-amber-600 font-bold bg-amber-50 hover:bg-amber-100 px-4 py-2.5 rounded-xl transition-colors border border-amber-200 shadow-sm">
@@ -61,7 +68,6 @@
                     </div>
                     <button onclick="generateAIStory()" class="w-full py-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-xl border border-purple-200 transition-colors">✨ 創作專屬豬豬故事</button>
                     <div id="ai-story-container" class="text-left text-sm text-slate-700 bg-purple-50 p-4 rounded-xl border border-purple-100 hidden-phase leading-relaxed"></div>
-
                     <button onclick="generateAIMnemonic()" class="w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl border border-blue-200 transition-colors">✨ 教我 AI 記憶秘訣</button>
                     <div id="ai-mnemonic-container" class="text-left text-sm text-slate-700 bg-blue-50 p-4 rounded-xl border border-blue-100 hidden-phase leading-relaxed"></div>
                 </div>
@@ -77,7 +83,6 @@
                 </button>
                 <span id="spelling-chinese" class="text-xl font-bold text-indigo-600"></span>
             </div>
-            
             <div id="slots-container" class="flex flex-wrap justify-center gap-2 mb-10 min-h-[3.5rem]"></div>
             <div id="pool-container" class="flex flex-wrap justify-center gap-2"></div>
             
@@ -88,92 +93,45 @@
                 <div id="cash-reward-celebration" class="hidden-phase w-full text-center bg-gradient-to-r from-amber-100 to-yellow-300 border-4 border-yellow-500 p-6 rounded-2xl mb-6 shadow-xl animate-bounce-scale">
                     <span class="text-2xl font-black text-rose-600 block mb-2">🎉 連續 5 日達成！獲得 $100 獎賞！ 🎉</span>
                     <span class="text-lg font-bold text-amber-800 block mb-4">額外挑戰：隨機抽查小測，最高可再獲 $50 獎金！💰</span>
-                    <button onclick="startQuiz()" class="w-full py-3 bg-rose-500 text-white font-bold rounded-xl text-lg hover:bg-rose-600 active:scale-95 transition-transform shadow-md">
-                        立即開始挑戰 ⚔️
-                    </button>
+                    <button onclick="startQuiz()" class="w-full py-3 bg-rose-500 text-white font-bold rounded-xl text-lg hover:bg-rose-600 active:scale-95 transition-transform shadow-md">立即開始挑戰 ⚔️</button>
                 </div>
-
                 <div class="text-2xl font-bold text-emerald-500 mb-6">🎉 完美拼出！</div>
                 <button onclick="pickNextWord()" class="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg hover:bg-emerald-600 transition-transform active:scale-95 shadow-lg shadow-emerald-200">學習下一題</button>
             </div>
         </div>
 
-        <div id="quiz-phase" class="w-full hidden-phase animate-fade-in-up">
-            <div class="bg-white p-8 rounded-3xl shadow-sm text-center border-2 border-rose-50">
-                <div class="text-rose-500 font-bold mb-2 text-sm tracking-wider">隨機抽查小測 (<span id="quiz-progress">1</span>/10)</div>
-                <h2 id="quiz-word" class="text-3xl md:text-4xl font-black text-slate-800 mb-8 lowercase">WORD</h2>
-                <div id="quiz-options" class="flex flex-col gap-3">
-                    </div>
-            </div>
-        </div>
-
-        <div id="quiz-result-phase" class="w-full hidden-phase animate-fade-in-up text-center">
-            <div class="bg-white p-8 rounded-3xl shadow-sm border-2 border-emerald-50 mb-6">
-                <h2 class="text-3xl font-black text-emerald-500 mb-2">小測完成！</h2>
-                <p class="text-lg text-slate-600 mb-4 font-medium">答對：<span id="quiz-score-display" class="font-bold text-indigo-600">0</span> / 10</p>
-                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 mb-6 inline-block w-full">
-                    <p class="text-slate-600 font-bold text-sm">額外獲得獎金</p>
-                    <p class="text-3xl font-black text-amber-500">+$<span id="quiz-cash-earned">0</span></p>
-                </div>
-                <button onclick="backToStudyFromQuiz()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl text-lg hover:bg-indigo-700 transition-transform active:scale-95 shadow-lg shadow-indigo-200">返回學習主頁</button>
-            </div>
-        </div>
+        <div id="quiz-phase" class="w-full hidden-phase animate-fade-in-up"><div class="bg-white p-8 rounded-3xl shadow-sm text-center border-2 border-rose-50"><div class="text-rose-500 font-bold mb-2 text-sm tracking-wider">隨機抽查小測 (<span id="quiz-progress">1</span>/10)</div><h2 id="quiz-word" class="text-3xl md:text-4xl font-black text-slate-800 mb-8 lowercase">WORD</h2><div id="quiz-options" class="flex flex-col gap-3"></div></div></div>
+        <div id="quiz-result-phase" class="w-full hidden-phase animate-fade-in-up text-center"><div class="bg-white p-8 rounded-3xl shadow-sm border-2 border-emerald-50 mb-6"><h2 class="text-3xl font-black text-emerald-500 mb-2">小測完成！</h2><p class="text-lg text-slate-600 mb-4 font-medium">答對：<span id="quiz-score-display" class="font-bold text-indigo-600">0</span> / 10</p><div class="bg-amber-50 p-4 rounded-xl border border-amber-200 mb-6 inline-block w-full"><p class="text-slate-600 font-bold text-sm">額外獲得獎金</p><p class="text-3xl font-black text-amber-500">+$<span id="quiz-cash-earned">0</span></p></div><button onclick="backToStudyFromQuiz()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl text-lg hover:bg-indigo-700 transition-transform active:scale-95 shadow-lg shadow-indigo-200">返回學習主頁</button></div></div>
     </main>
 
-    <div id="calendar-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity">
-        <div class="bg-white w-11/12 max-w-md h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50">
-                <h2 class="text-2xl font-black text-amber-600 flex items-center gap-2">💰 獎勵日曆</h2>
-                <button onclick="closeCalendar()" class="p-2 bg-white text-slate-600 rounded-full hover:bg-rose-100 hover:text-rose-600 shadow-sm transition-colors">✖</button>
-            </div>
-            <div class="p-6 overflow-y-auto flex flex-col gap-6">
-                <div class="flex gap-4">
-                    <div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-                        <div class="text-sm font-bold text-slate-500 mb-1">虛擬錢包</div>
-                        <div class="text-3xl font-black text-emerald-500">$<span id="modal-cash-display">0</span></div>
-                    </div>
-                    <div class="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-                        <div class="text-sm font-bold text-amber-600 mb-1">連續打卡</div>
-                        <div class="text-3xl font-black text-amber-500"><span id="modal-streak-display">0</span> 日</div>
-                    </div>
-                </div>
-                <div class="bg-white border-2 border-slate-100 rounded-2xl p-5">
-                    <div class="text-center font-bold text-slate-700 mb-4">下一階段獎賞 ($100) 距離：</div>
-                    <div class="flex justify-between items-center relative z-10" id="streak-circles-container"></div>
-                    <div class="h-2 bg-slate-100 rounded-full -mt-5 relative z-0 mx-4"></div>
-                </div>
-                <div class="bg-white border-2 border-slate-100 rounded-2xl p-5">
-                    <div class="font-bold text-slate-700 mb-3 text-center">最近 7 日打卡紀錄</div>
-                    <div class="flex justify-between" id="mini-calendar-container"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="word-bank-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity">
-        <div class="bg-white w-11/12 max-w-lg md:max-w-2xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 class="text-2xl font-black text-indigo-600">我的專屬字詞庫</h2>
-                <button onclick="closeWordBank()" class="p-2 bg-slate-200 text-slate-600 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors">✖</button>
-            </div>
-            <div id="word-bank-list" class="flex-1 p-6 overflow-y-auto bg-slate-50 flex flex-col gap-4 no-scrollbar"></div>
-        </div>
-    </div>
+    <div id="calendar-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity"><div class="bg-white w-11/12 max-w-md h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up"><div class="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50"><h2 class="text-2xl font-black text-amber-600 flex items-center gap-2">💰 獎勵日曆</h2><button onclick="closeCalendar()" class="p-2 bg-white text-slate-600 rounded-full hover:bg-rose-100 hover:text-rose-600 shadow-sm transition-colors">✖</button></div><div class="p-6 overflow-y-auto flex flex-col gap-6"><div class="flex gap-4"><div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center"><div class="text-sm font-bold text-slate-500 mb-1">虛擬錢包</div><div class="text-3xl font-black text-emerald-500">$<span id="modal-cash-display">0</span></div></div><div class="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center"><div class="text-sm font-bold text-amber-600 mb-1">連續打卡</div><div class="text-3xl font-black text-amber-500"><span id="modal-streak-display">0</span> 日</div></div></div><div class="bg-white border-2 border-slate-100 rounded-2xl p-5"><div class="text-center font-bold text-slate-700 mb-4">下一階段獎賞 ($100) 距離：</div><div class="flex justify-between items-center relative z-10" id="streak-circles-container"></div><div class="h-2 bg-slate-100 rounded-full -mt-5 relative z-0 mx-4"></div></div><div class="bg-white border-2 border-slate-100 rounded-2xl p-5"><div class="font-bold text-slate-700 mb-3 text-center">最近 7 日打卡紀錄</div><div class="flex justify-between" id="mini-calendar-container"></div></div></div></div></div>
+    <div id="word-bank-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden-phase transition-opacity"><div class="bg-white w-11/12 max-w-lg md:max-w-2xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up"><div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50"><h2 class="text-2xl font-black text-indigo-600">我的專屬字詞庫</h2><button onclick="closeWordBank()" class="p-2 bg-slate-200 text-slate-600 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors">✖</button></div><div id="word-bank-list" class="flex-1 p-6 overflow-y-auto bg-slate-50 flex flex-col gap-4 no-scrollbar"></div></div></div>
 
     <script>
-        // --- 核心變數與 API ---
+        // 🔑 你的 Firebase 設定檔已整合
+        const firebaseConfig = {
+            apiKey: "AIzaSyBUPoLOwiGC7zspdi5zAMB04PF5BAviVcE",
+            authDomain: "pigg-vocab.firebaseapp.com",
+            projectId: "pigg-vocab",
+            storageBucket: "pigg-vocab.firebasestorage.app",
+            messagingSenderId: "937164003769",
+            appId: "1:937164003769:web:ed916b3780fa9ecffefe68"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 🔑 【請在這裡貼上你發佈 Apps Script 後得到的 Web App URL】
+        const APPS_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; 
+
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_ReKq_x8fDAo-QsmQ_RJRC7i41IXhQ079fb94Y3BbcMfu4cPPgQJjeKxW1B9V-OfO4lxF90WXGaok/pub?output=csv"; 
-        const apiKey = ""; // ⚠️ 放入你的 Gemini API Key
-        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
         
         let wordDatabase = [], availableWords = [], currentWord = null, gameState = 'loading', selectedLetters = [], scrambledLetters = [];
         const DAILY_TARGET = 5;
         let dailyCount = 0, wordBank = [], completedHistory = {}, currentStreak = 0, totalCash = 0;
-        
-        // 小測專用變數
         let quizWords = [], currentQuizIndex = 0, quizScore = 0;
+        let currentStudentId = null;
 
-        // --- 工具與存儲邏輯 ---
         function getLocalYMD(dateObj) {
             const offset = dateObj.getTimezoneOffset();
             return new Date(dateObj.getTime() - (offset*60*1000)).toISOString().split('T')[0];
@@ -189,19 +147,32 @@
             return streak;
         }
 
-        function initStorage() {
-            const todayStr = getLocalYMD(new Date());
-            try { wordBank = JSON.parse(localStorage.getItem('ngsl_word_bank')) || []; } catch(e) { wordBank = []; }
-            try { completedHistory = JSON.parse(localStorage.getItem('ngsl_history')) || {}; } catch(e) { completedHistory = {}; }
-            totalCash = parseInt(localStorage.getItem('ngsl_cash')) || 0;
+        // ☁️ 雲端讀取資料
+        async function initCloudStorage() {
+            currentStudentId = localStorage.getItem('piggy_student_id');
+            if (!currentStudentId) {
+                currentStudentId = prompt("👋 歡迎來到豬豬詞彙挑戰！\n請輸入你的學號或英文名 (例如: 3A-01-Peter) 以載入你的專屬存檔：");
+                if (currentStudentId) localStorage.setItem('piggy_student_id', currentStudentId);
+                else currentStudentId = "Guest_" + Math.floor(Math.random()*1000); 
+            }
+            document.getElementById('student-name-display').innerText = currentStudentId;
 
-            const storedDate = localStorage.getItem('ngsl_daily_date');
-            if (storedDate === todayStr) {
-                dailyCount = parseInt(localStorage.getItem('ngsl_daily_count')) || 0;
-            } else {
-                dailyCount = 0;
-                localStorage.setItem('ngsl_daily_date', todayStr);
-                localStorage.setItem('ngsl_daily_count', dailyCount);
+            try {
+                const docRef = db.collection("students").doc(currentStudentId);
+                const docSnap = await docRef.get();
+                const todayStr = getLocalYMD(new Date());
+
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    wordBank = data.wordBank || [];
+                    completedHistory = data.completedHistory || {};
+                    totalCash = data.totalCash || 0;
+                    dailyCount = (data.dailyDate === todayStr) ? (data.dailyCount || 0) : 0;
+                } else {
+                    wordBank = []; completedHistory = {}; totalCash = 0; dailyCount = 0;
+                }
+            } catch (error) {
+                console.error("Firebase 讀取失敗", error);
             }
 
             currentStreak = calculateStreak(completedHistory);
@@ -209,354 +180,125 @@
             updateRewardsUI();
         }
 
-        // --- UI 更新邏輯 ---
-        function updateDailyUI() {
-            document.getElementById('total-words-count').innerText = wordBank.length;
-            const progressPercent = Math.min((dailyCount / DAILY_TARGET) * 100, 100);
-            const bar = document.getElementById('daily-progress-bar');
-            const textStatus = document.getElementById('daily-text-status');
-            
-            bar.style.width = `${progressPercent}%`;
-            if (dailyCount >= DAILY_TARGET) {
-                bar.classList.replace('bg-emerald-400', 'bg-amber-400');
-                textStatus.innerHTML = `<span class="text-amber-500">已達標 🔥 (${dailyCount})</span>`;
-            } else {
-                bar.classList.replace('bg-amber-400', 'bg-emerald-400');
-                textStatus.innerHTML = `<span class="text-emerald-500">${dailyCount} / ${DAILY_TARGET}</span>`;
+        // ☁️ 雲端儲存資料
+        async function saveToCloud() {
+            if (!currentStudentId) return;
+            try {
+                await db.collection("students").doc(currentStudentId).set({
+                    wordBank: wordBank,
+                    completedHistory: completedHistory,
+                    totalCash: totalCash,
+                    dailyCount: dailyCount,
+                    dailyDate: getLocalYMD(new Date()),
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (error) {
+                console.error("存檔上傳失敗", error);
             }
         }
 
-        function updateRewardsUI() {
-            document.getElementById('cash-display').innerText = totalCash;
-            document.getElementById('modal-cash-display').innerText = totalCash;
-            document.getElementById('streak-display').innerText = currentStreak;
-            document.getElementById('modal-streak-display').innerText = currentStreak;
-            
-            let streakProgress = currentStreak % 5;
-            if (currentStreak > 0 && streakProgress === 0) streakProgress = 5; 
-            
-            let circlesHtml = '';
-            for(let i=1; i<=5; i++) {
-                if (i <= streakProgress) circlesHtml += `<div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center font-bold shadow-md">✓</div>`;
-                else if (i === 5) circlesHtml += `<div class="w-10 h-10 rounded-full bg-white border-4 border-amber-300 text-amber-500 flex items-center justify-center text-xl shadow-sm">💰</div>`;
-                else circlesHtml += `<div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-slate-400 text-xs">${i}</div>`;
-            }
-            document.getElementById('streak-circles-container').innerHTML = circlesHtml;
+        function updateDailyUI() { 
+            document.getElementById('total-words-count').innerText = wordBank.length;
+            const progressPercent = Math.min((dailyCount / DAILY_TARGET) * 100, 100);
+            document.getElementById('daily-progress-bar').style.width = `${progressPercent}%`;
+            if (dailyCount >= DAILY_TARGET) document.getElementById('daily-text-status').innerHTML = `<span class="text-amber-500">已達標 🔥 (${dailyCount})</span>`;
+            else document.getElementById('daily-text-status').innerHTML = `<span class="text-emerald-500">${dailyCount} / ${DAILY_TARGET}</span>`;
+        }
 
-            let miniCalHtml = '';
-            for(let i=6; i>=0; i--) {
-                let d = new Date(); d.setDate(d.getDate() - i);
-                let dStr = getLocalYMD(d);
-                let dayName = d.toLocaleDateString('zh-HK', { weekday: 'short' }).replace('星期', '');
-                let isDone = completedHistory[dStr];
-                miniCalHtml += `<div class="flex flex-col items-center gap-1"><div class="text-xs text-slate-400">${dayName}</div><div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold ${isDone ? 'bg-emerald-400 text-white shadow-sm' : 'bg-slate-100 text-slate-300'}">${isDone ? '✓' : ''}</div></div>`;
-            }
-            document.getElementById('mini-calendar-container').innerHTML = miniCalHtml;
+        function updateRewardsUI() { 
+            document.getElementById('cash-display').innerText = totalCash; document.getElementById('modal-cash-display').innerText = totalCash;
+            document.getElementById('streak-display').innerText = currentStreak; document.getElementById('modal-streak-display').innerText = currentStreak;
+            let sp = currentStreak % 5; if(currentStreak > 0 && sp === 0) sp = 5;
+            let ch = ''; for(let i=1;i<=5;i++){ if(i<=sp) ch+=`<div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center font-bold shadow-md">✓</div>`; else if(i===5) ch+=`<div class="w-10 h-10 rounded-full bg-white border-4 border-amber-300 text-amber-500 flex items-center justify-center text-xl shadow-sm">💰</div>`; else ch+=`<div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-slate-400 text-xs">${i}</div>`;}
+            document.getElementById('streak-circles-container').innerHTML = ch;
         }
 
         function handleWordSuccess() {
-            const wordExists = wordBank.some(item => item.word.toUpperCase() === currentWord.word.toUpperCase());
-            if (!wordExists) {
-                wordBank.push({
-                    word: currentWord.word.toUpperCase(), chinese: currentWord.chinese, hint: currentWord.hint, pos: currentWord.pos, hint_chinese: currentWord.hint_chinese || '', date: getLocalYMD(new Date())
-                });
-                localStorage.setItem('ngsl_word_bank', JSON.stringify(wordBank));
+            if (!wordBank.some(item => item.word.toUpperCase() === currentWord.word.toUpperCase())) {
+                wordBank.push({ word: currentWord.word.toUpperCase(), chinese: currentWord.chinese, hint: currentWord.hint, pos: currentWord.pos, hint_chinese: currentWord.hint_chinese || '' });
             }
-
             dailyCount++;
-            localStorage.setItem('ngsl_daily_count', dailyCount);
-            updateDailyUI();
-
             if (dailyCount === DAILY_TARGET) {
-                const todayStr = getLocalYMD(new Date());
-                completedHistory[todayStr] = true;
-                localStorage.setItem('ngsl_history', JSON.stringify(completedHistory));
+                completedHistory[getLocalYMD(new Date())] = true;
                 currentStreak = calculateStreak(completedHistory);
-                
                 if (currentStreak > 0 && currentStreak % 5 === 0) {
-                    totalCash += 100; // 發送 100 基本獎勵
-                    localStorage.setItem('ngsl_cash', totalCash);
+                    totalCash += 100;
                     document.getElementById('cash-reward-celebration').classList.remove('hidden-phase');
                     fireConfetti(true); 
                 } else {
                     document.getElementById('daily-goal-celebration').classList.remove('hidden-phase');
                     fireConfetti(false); 
                 }
-                updateRewardsUI();
             }
-        }
-
-        function fireConfetti(isBigReward) {
-            if (typeof confetti !== 'function') return;
-            var duration = isBigReward ? 4000 : 2000;
-            var end = Date.now() + duration;
-            var colors = isBigReward ? ['#fbbf24', '#f59e0b', '#e11d48'] : ['#4f46e5', '#10b981', '#f59e0b'];
-            (function frame() {
-                confetti({ particleCount: isBigReward ? 8 : 4, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
-                confetti({ particleCount: isBigReward ? 8 : 4, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
-                if (Date.now() < end) requestAnimationFrame(frame);
-            }());
-        }
-
-        // --- Modals 控制 ---
-        function openCalendar() { updateRewardsUI(); document.getElementById('calendar-modal').classList.remove('hidden-phase'); }
-        function closeCalendar() { document.getElementById('calendar-modal').classList.add('hidden-phase'); }
-        function openWordBank() {
-            document.getElementById('word-bank-modal').classList.remove('hidden-phase');
-            const listContainer = document.getElementById('word-bank-list');
-            if (wordBank.length === 0) { listContainer.innerHTML = '<div class="text-center text-slate-400 mt-10">字典空空如也</div>'; return; }
-            listContainer.innerHTML = [...wordBank].reverse().map(item => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <div class="font-black text-xl text-slate-800">${item.word.toLowerCase()}</div>
-                    <div class="text-indigo-600 font-bold mb-1">${item.chinese}</div>
-                    <div class="text-sm text-slate-500 italic">"${item.hint.replace('______', `<span class="underline">${item.word.toLowerCase()}</span>`)}"</div>
-                    ${item.hint_chinese ? `<div class="mt-2 p-2 bg-slate-100 rounded text-sm text-slate-600 font-medium">中譯：${item.hint_chinese}</div>` : ''}
-                </div>`).join('');
-        }
-        function closeWordBank() { document.getElementById('word-bank-modal').classList.add('hidden-phase'); }
-
-        // --- AI API 呼叫 ---
-        async function fetchGeminiAPI(promptText) {
-            if(!apiKey) return "⚠️ 請先在代碼中填入 apiKey 才能使用 AI 功能！";
-            const delays = [1000, 2000, 4000];
-            const payload = { contents: [{ parts: [{ text: promptText }] }], systemInstruction: { parts: [{ text: "你是一位有趣、幽默、充滿創意的香港英文老師。請使用繁體中文（可適當加入一點點香港口語令語氣更親切）回答。回覆要盡量簡短、排版清晰易讀。" }] } };
-            for (let i = 0; i < delays.length; i++) {
-                try {
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return (await response.json()).candidates[0].content.parts[0].text;
-                } catch (error) {
-                    if (i === delays.length - 1) return "哎呀，AI 老師暫時有少少塞車，請稍後再試！🙏";
-                    await new Promise(resolve => setTimeout(resolve, delays[i]));
-                }
-            }
-        }
-        async function generateAIStory() {
-            const container = document.getElementById('ai-story-container');
-            container.classList.remove('hidden-phase');
-            container.innerHTML = `<div class="animate-pulse-slow text-purple-500 font-bold">✨ Gemini 正在為豬豬編寫劇本...</div>`;
-            const resultText = await fetchGeminiAPI(`請為單字 "${currentWord.word}" (中文: ${currentWord.chinese}) 創作一個極短的雙語小故事（最多 3 句）。主角必須是「豬豬」(Piggy)，內容要搞笑可愛。請將目標單字加粗顯示。`);
-            container.innerHTML = resultText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-purple-700 bg-purple-100 px-1 rounded">$1</strong>').replace(/\n/g, '<br>');
-        }
-        async function generateAIMnemonic() {
-            const container = document.getElementById('ai-mnemonic-container');
-            container.classList.remove('hidden-phase');
-            container.innerHTML = `<div class="animate-pulse-slow text-blue-500 font-bold">✨ Gemini 正在翻查記憶秘笈...</div>`;
-            const resultText = await fetchGeminiAPI(`請提供一個有趣且容易記住的方法來拼寫英文單字 "${currentWord.word}" (中文: ${currentWord.chinese})。可以使用字根、諧音或聯想。只需要最精華的記憶法。`);
-            container.innerHTML = resultText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-700">$1</strong>').replace(/\n/g, '<br>');
-        }
-        function resetAIContainers() {
-            document.getElementById('ai-story-container').classList.add('hidden-phase'); document.getElementById('ai-story-container').innerHTML = '';
-            document.getElementById('ai-mnemonic-container').classList.add('hidden-phase'); document.getElementById('ai-mnemonic-container').innerHTML = '';
-        }
-
-        // --- $50 隨機小測邏輯 ---
-        function startQuiz() {
-            document.getElementById('spelling-phase').classList.add('hidden-phase');
-            document.getElementById('quiz-phase').classList.remove('hidden-phase');
-
-            // 從專屬字庫隨機抽 10 題
-            let shuffledBank = [...wordBank].sort(() => Math.random() - 0.5);
-            quizWords = shuffledBank.slice(0, 10);
-            currentQuizIndex = 0;
-            quizScore = 0;
-
-            if(quizWords.length === 0) {
-                alert("字庫暫時未有足夠生字，請先學習更多單字！");
-                backToStudyFromQuiz();
-                return;
-            }
-            renderQuizQuestion();
-        }
-
-        function renderQuizQuestion() {
-            if (currentQuizIndex >= quizWords.length) {
-                endQuiz();
-                return;
-            }
-
-            const currentQ = quizWords[currentQuizIndex];
-            document.getElementById('quiz-progress').innerText = currentQuizIndex + 1;
-            document.getElementById('quiz-word').innerText = currentQ.word;
-
-            // 生成選項：1個正確，3個干擾項
-            let distractors = wordDatabase.filter(w => w.word.toUpperCase() !== currentQ.word.toUpperCase())
-                                          .sort(() => Math.random() - 0.5)
-                                          .slice(0, 3)
-                                          .map(w => w.chinese);
-            
-            while (distractors.length < 3) { distractors.push("其他意思 " + Math.floor(Math.random()*100)); } // 如果資料庫唔夠字嘅後備方案
-
-            let options = [currentQ.chinese, ...distractors].sort(() => Math.random() - 0.5);
-
-            const optionsContainer = document.getElementById('quiz-options');
-            optionsContainer.innerHTML = '';
-            options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "w-full py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-lg font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors shadow-sm active:scale-95";
-                btn.innerText = opt;
-                btn.onclick = () => handleQuizAnswer(opt === currentQ.chinese, btn);
-                optionsContainer.appendChild(btn);
-            });
-        }
-
-        function handleQuizAnswer(isCorrect, btn) {
-            // 鎖定所有按鈕
-            const buttons = document.getElementById('quiz-options').querySelectorAll('button');
-            buttons.forEach(b => b.onclick = null);
-
-            if (isCorrect) {
-                btn.classList.replace('bg-slate-50', 'bg-emerald-100');
-                btn.classList.replace('border-slate-200', 'border-emerald-500');
-                btn.classList.replace('text-slate-700', 'text-emerald-700');
-                quizScore++;
-            } else {
-                btn.classList.replace('bg-slate-50', 'bg-rose-100');
-                btn.classList.replace('border-slate-200', 'border-rose-500');
-                btn.classList.replace('text-slate-700', 'text-rose-700');
-                btn.classList.add('animate-shake');
-                
-                // 顯示正確答案
-                buttons.forEach(b => {
-                    if (b.innerText === quizWords[currentQuizIndex].chinese) {
-                        b.classList.replace('bg-slate-50', 'bg-emerald-50');
-                        b.classList.replace('border-slate-200', 'border-emerald-400');
-                        b.classList.replace('text-slate-700', 'text-emerald-700');
-                    }
-                });
-            }
-
-            setTimeout(() => {
-                currentQuizIndex++;
-                renderQuizQuestion();
-            }, 1200);
+            updateDailyUI(); updateRewardsUI();
+            saveToCloud(); 
         }
 
         function endQuiz() {
-            document.getElementById('quiz-phase').classList.add('hidden-phase');
-            document.getElementById('quiz-result-phase').classList.remove('hidden-phase');
-
-            const cashEarned = quizScore * 5; // 每題 $5
-            document.getElementById('quiz-score-display').innerText = quizScore;
-            document.getElementById('quiz-cash-earned').innerText = cashEarned;
-
+            document.getElementById('quiz-phase').classList.add('hidden-phase'); document.getElementById('quiz-result-phase').classList.remove('hidden-phase');
+            const cashEarned = quizScore * 5;
+            document.getElementById('quiz-score-display').innerText = quizScore; document.getElementById('quiz-cash-earned').innerText = cashEarned;
             if(cashEarned > 0) {
                 totalCash += cashEarned;
-                localStorage.setItem('ngsl_cash', totalCash);
-                updateRewardsUI();
-                fireConfetti(true);
+                updateRewardsUI(); fireConfetti(true);
+                saveToCloud();
             }
         }
 
-        function backToStudyFromQuiz() {
-            document.getElementById('quiz-result-phase').classList.add('hidden-phase');
-            document.getElementById('quiz-phase').classList.add('hidden-phase');
-            document.getElementById('success-area').classList.add('hidden-phase');
-            nextWordLogic();
-        }
-
-        // --- 核心遊戲流程 ---
-        function initGame() {
-            initStorage();
+        async function initGame() {
+            await initCloudStorage(); 
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true, header: true,
                 complete: function(results) {
                     wordDatabase = results.data.filter(row => row.word && row.word.trim() !== "");
-                    document.getElementById('db-status').innerText = "☁️ 雲端字庫載入成功";
-                    resetAvailableWords();
-                    nextWordLogic();
+                    document.getElementById('db-status').innerText = "☁️ 雲端字庫已連接";
+                    resetAvailableWords(); nextWordLogic();
                 }
             });
         }
-
-        function resetAvailableWords() { availableWords = [...wordDatabase].sort(() => Math.random() - 0.5); }
-
-        function nextWordLogic() {
-            if (availableWords.length === 0) resetAvailableWords();
-            currentWord = availableWords.pop();
-            const letters = currentWord.word.toLowerCase().split('').map((c, i) => ({id: i, char: c}));
-            scrambledLetters = [...letters].sort(() => Math.random() - 0.5);
-            selectedLetters = [];
-            gameState = 'study';
-            
-            document.getElementById('daily-goal-celebration').classList.add('hidden-phase');
-            document.getElementById('cash-reward-celebration').classList.add('hidden-phase');
-            resetAIContainers();
-            updateUI();
-        }
-
-        function updateUI() {
-            if(gameState === 'study') {
-                document.getElementById('study-phase').classList.remove('hidden-phase');
-                document.getElementById('spelling-phase').classList.add('hidden-phase');
-                document.getElementById('study-word').innerText = currentWord.word.toLowerCase();
-                document.getElementById('study-chinese').innerText = currentWord.chinese;
-                const engSentence = currentWord.hint.replace('______', `<span class="text-indigo-600 font-bold underline decoration-2 underline-offset-4 px-1">${currentWord.word.toLowerCase()}</span>`);
-                document.getElementById('study-sentence').innerHTML = `<p class="italic text-lg text-slate-700">"${engSentence}"</p>${currentWord.hint_chinese ? `<p class="mt-3 text-sm font-medium text-slate-500 bg-white p-2 rounded inline-block">中譯：${currentWord.hint_chinese}</p>` : ''}`;
-            } else {
-                document.getElementById('study-phase').classList.add('hidden-phase');
-                document.getElementById('spelling-phase').classList.remove('hidden-phase');
-                document.getElementById('spelling-chinese').innerText = currentWord.chinese;
-                renderSpelling();
-            }
-        }
-
-        function renderSpelling() {
-            document.getElementById('slots-container').innerHTML = currentWord.word.split('').map((_, i) => `<div class="w-12 h-14 md:w-16 md:h-16 bg-slate-200 text-slate-800 text-2xl font-black rounded-2xl flex items-center justify-center shadow-inner transition-all">${selectedLetters[i]?.char || '_'}</div>`).join('');
-            document.getElementById('pool-container').innerHTML = scrambledLetters.map((l, i) => `<button id="pool-btn-${i}" onclick="pick(${i})" class="w-12 h-14 md:w-16 md:h-16 bg-white border-2 border-slate-200 text-slate-700 text-2xl font-black rounded-2xl shadow-sm hover:border-indigo-400 hover:text-indigo-600 hover:-translate-y-1 transition-all active:scale-95">${l.char}</button>`).join('');
-        }
-
-        function pick(idx) {
-            if(selectedLetters.length < currentWord.word.length) {
-                // 防亂撳機制：檢查是否正確字母
-                const targetChar = currentWord.word.toLowerCase()[selectedLetters.length];
-                if (scrambledLetters[idx].char === targetChar) {
-                    selectedLetters.push(scrambledLetters[idx]);
-                    scrambledLetters.splice(idx, 1);
-                    
-                    if(selectedLetters.length === currentWord.word.length) {
-                        document.getElementById('pool-container').classList.add('hidden-phase');
-                        document.getElementById('success-area').classList.remove('hidden-phase');
-                        speakWord();
-                        handleWordSuccess();
-                    }
-                    renderSpelling();
-                } else {
-                    // 撳錯：反紅兼震動
-                    const btn = document.getElementById(`pool-btn-${idx}`);
-                    if(btn) {
-                        btn.classList.add('animate-shake', 'bg-rose-100', 'border-rose-400', 'text-rose-600');
-                        setTimeout(() => btn.classList.remove('animate-shake', 'bg-rose-100', 'border-rose-400', 'text-rose-600'), 400);
-                    }
-                }
-            }
-        }
-
-        function pickNextWord() {
-            document.getElementById('pool-container').classList.remove('hidden-phase');
-            document.getElementById('success-area').classList.add('hidden-phase');
-            nextWordLogic();
-        }
-
-        function backToStudy() {
-            const letters = currentWord.word.toLowerCase().split('').map((c, i) => ({id: i, char: c}));
-            scrambledLetters = [...letters].sort(() => Math.random() - 0.5);
-            selectedLetters = [];
-            document.getElementById('pool-container').classList.remove('hidden-phase');
-            document.getElementById('success-area').classList.add('hidden-phase');
-            gameState = 'study';
-            updateUI();
-        }
-
-        function speakWord() { 
-            if('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(currentWord.word);
-                utterance.lang = 'en-US';
-                window.speechSynthesis.speak(utterance);
-            }
-        }
         
+        function fireConfetti(isBigReward) { if (typeof confetti !== 'function') return; var duration = isBigReward ? 4000 : 2000; var end = Date.now() + duration; var colors = isBigReward ? ['#fbbf24', '#f59e0b', '#e11d48'] : ['#4f46e5', '#10b981', '#f59e0b']; (function frame() { confetti({ particleCount: isBigReward ? 8 : 4, angle: 60, spread: 55, origin: { x: 0 }, colors: colors }); confetti({ particleCount: isBigReward ? 8 : 4, angle: 120, spread: 55, origin: { x: 1 }, colors: colors }); if (Date.now() < end) requestAnimationFrame(frame); }()); }
+        function openCalendar() { updateRewardsUI(); document.getElementById('calendar-modal').classList.remove('hidden-phase'); }
+        function closeCalendar() { document.getElementById('calendar-modal').classList.add('hidden-phase'); }
+        function openWordBank() { document.getElementById('word-bank-modal').classList.remove('hidden-phase'); const listContainer = document.getElementById('word-bank-list'); if (wordBank.length === 0) { listContainer.innerHTML = '<div class="text-center text-slate-400 mt-10">字典空空如也</div>'; return; } listContainer.innerHTML = [...wordBank].reverse().map(item => `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><div class="font-black text-xl text-slate-800">${item.word.toLowerCase()}</div><div class="text-indigo-600 font-bold mb-1">${item.chinese}</div><div class="text-sm text-slate-500 italic">"${item.hint.replace('______', `<span class="underline">${item.word.toLowerCase()}</span>`)}"</div>${item.hint_chinese ? `<div class="mt-2 p-2 bg-slate-100 rounded text-sm text-slate-600 font-medium">中譯：${item.hint_chinese}</div>` : ''}</div>`).join(''); }
+        function closeWordBank() { document.getElementById('word-bank-modal').classList.add('hidden-phase'); }
+        
+        // 🤖 經由 Apps Script 發送請求避開香港封鎖
+        async function fetchGeminiAPI(promptText) { 
+            if(!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("YOUR_SCRIPT_ID")) return "⚠️ 請先填入 Apps Script Web App URL！";
+            try {
+                const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 避免 CORS preflight
+                    body: JSON.stringify({ prompt: promptText })
+                });
+                const data = await response.json();
+                return data.result;
+            } catch (e) {
+                console.error(e);
+                return "AI 老師暫時有少少塞車，請稍後再試！";
+            }
+        }
+
+        async function generateAIStory() { document.getElementById('ai-story-container').classList.remove('hidden-phase'); document.getElementById('ai-story-container').innerHTML = `<div class="animate-pulse-slow text-purple-500">✨ Gemini 正在編寫劇本...</div>`; const res = await fetchGeminiAPI(`為 "${currentWord.word}" (中文: ${currentWord.chinese}) 創作極短雙語小故事，主角是「豬豬」，加粗單字。`); document.getElementById('ai-story-container').innerHTML = res.replace(/\*\*(.*?)\*\*/g, '<strong class="text-purple-700 bg-purple-100 px-1 rounded">$1</strong>').replace(/\n/g, '<br>'); }
+        async function generateAIMnemonic() { document.getElementById('ai-mnemonic-container').classList.remove('hidden-phase'); document.getElementById('ai-mnemonic-container').innerHTML = `<div class="animate-pulse-slow text-blue-500">✨ Gemini 正在翻查秘笈...</div>`; const res = await fetchGeminiAPI(`提供容易記住的方法拼寫 "${currentWord.word}" (中文: ${currentWord.chinese})，如諧音或拆字。`); document.getElementById('ai-mnemonic-container').innerHTML = res.replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-700">$1</strong>').replace(/\n/g, '<br>'); }
+        
+        function resetAIContainers() { document.getElementById('ai-story-container').classList.add('hidden-phase'); document.getElementById('ai-mnemonic-container').classList.add('hidden-phase'); }
+        function resetAvailableWords() { availableWords = [...wordDatabase].sort(() => Math.random() - 0.5); }
+        function nextWordLogic() { if (availableWords.length === 0) resetAvailableWords(); currentWord = availableWords.pop(); const letters = currentWord.word.toLowerCase().split('').map((c, i) => ({id: i, char: c})); scrambledLetters = [...letters].sort(() => Math.random() - 0.5); selectedLetters = []; gameState = 'study'; document.getElementById('daily-goal-celebration').classList.add('hidden-phase'); document.getElementById('cash-reward-celebration').classList.add('hidden-phase'); resetAIContainers(); updateUI(); }
+        function updateUI() { if(gameState === 'study') { document.getElementById('study-phase').classList.remove('hidden-phase'); document.getElementById('spelling-phase').classList.add('hidden-phase'); document.getElementById('study-word').innerText = currentWord.word.toLowerCase(); document.getElementById('study-chinese').innerText = currentWord.chinese; const engSentence = currentWord.hint.replace('______', `<span class="text-indigo-600 font-bold underline px-1">${currentWord.word.toLowerCase()}</span>`); document.getElementById('study-sentence').innerHTML = `<p class="italic text-lg text-slate-700">"${engSentence}"</p>${currentWord.hint_chinese ? `<p class="mt-3 text-sm text-slate-500 bg-white p-2 rounded inline-block">中譯：${currentWord.hint_chinese}</p>` : ''}`; } else { document.getElementById('study-phase').classList.add('hidden-phase'); document.getElementById('spelling-phase').classList.remove('hidden-phase'); document.getElementById('spelling-chinese').innerText = currentWord.chinese; renderSpelling(); } }
+        function renderSpelling() { document.getElementById('slots-container').innerHTML = currentWord.word.split('').map((_, i) => `<div class="w-12 h-14 md:w-16 md:h-16 bg-slate-200 text-slate-800 text-2xl font-black rounded-2xl flex items-center justify-center shadow-inner transition-all">${selectedLetters[i]?.char || '_'}</div>`).join(''); document.getElementById('pool-container').innerHTML = scrambledLetters.map((l, i) => `<button id="pool-btn-${i}" onclick="pick(${i})" class="w-12 h-14 md:w-16 md:h-16 bg-white border-2 border-slate-200 text-slate-700 text-2xl font-black rounded-2xl shadow-sm hover:border-indigo-400 hover:text-indigo-600 hover:-translate-y-1 transition-all active:scale-95">${l.char}</button>`).join(''); }
+        function pick(idx) { if(selectedLetters.length < currentWord.word.length) { const targetChar = currentWord.word.toLowerCase()[selectedLetters.length]; if (scrambledLetters[idx].char === targetChar) { selectedLetters.push(scrambledLetters[idx]); scrambledLetters.splice(idx, 1); if(selectedLetters.length === currentWord.word.length) { document.getElementById('pool-container').classList.add('hidden-phase'); document.getElementById('success-area').classList.remove('hidden-phase'); speakWord(); handleWordSuccess(); } renderSpelling(); } else { const btn = document.getElementById(`pool-btn-${idx}`); if(btn) { btn.classList.add('animate-shake', 'bg-rose-100', 'border-rose-400', 'text-rose-600'); setTimeout(() => btn.classList.remove('animate-shake', 'bg-rose-100', 'border-rose-400', 'text-rose-600'), 400); } } } }
+        function pickNextWord() { document.getElementById('pool-container').classList.remove('hidden-phase'); document.getElementById('success-area').classList.add('hidden-phase'); nextWordLogic(); }
+        function backToStudy() { const letters = currentWord.word.toLowerCase().split('').map((c, i) => ({id: i, char: c})); scrambledLetters = [...letters].sort(() => Math.random() - 0.5); selectedLetters = []; document.getElementById('pool-container').classList.remove('hidden-phase'); document.getElementById('success-area').classList.add('hidden-phase'); gameState = 'study'; updateUI(); }
+        function speakWord() { if('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(currentWord.word); u.lang = 'en-US'; window.speechSynthesis.speak(u); } }
         function startSpelling() { gameState = 'spelling'; updateUI(); }
+        
+        function startQuiz() { document.getElementById('spelling-phase').classList.add('hidden-phase'); document.getElementById('quiz-phase').classList.remove('hidden-phase'); let shuffledBank = [...wordBank].sort(() => Math.random() - 0.5); quizWords = shuffledBank.slice(0, 10); currentQuizIndex = 0; quizScore = 0; if(quizWords.length === 0) { alert("字庫不足！"); backToStudyFromQuiz(); return; } renderQuizQuestion(); }
+        function renderQuizQuestion() { if (currentQuizIndex >= quizWords.length) { endQuiz(); return; } const currentQ = quizWords[currentQuizIndex]; document.getElementById('quiz-progress').innerText = currentQuizIndex + 1; document.getElementById('quiz-word').innerText = currentQ.word; let distractors = wordDatabase.filter(w => w.word.toUpperCase() !== currentQ.word.toUpperCase()).sort(() => Math.random() - 0.5).slice(0, 3).map(w => w.chinese); while (distractors.length < 3) { distractors.push("其他意思 " + Math.floor(Math.random()*100)); } let options = [currentQ.chinese, ...distractors].sort(() => Math.random() - 0.5); const optionsContainer = document.getElementById('quiz-options'); optionsContainer.innerHTML = ''; options.forEach(opt => { const btn = document.createElement('button'); btn.className = "w-full py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-lg font-bold text-slate-700 hover:bg-indigo-50 shadow-sm"; btn.innerText = opt; btn.onclick = () => handleQuizAnswer(opt === currentQ.chinese, btn); optionsContainer.appendChild(btn); }); }
+        function handleQuizAnswer(isCorrect, btn) { const buttons = document.getElementById('quiz-options').querySelectorAll('button'); buttons.forEach(b => b.onclick = null); if (isCorrect) { btn.classList.replace('bg-slate-50', 'bg-emerald-100'); btn.classList.replace('text-slate-700', 'text-emerald-700'); quizScore++; } else { btn.classList.replace('bg-slate-50', 'bg-rose-100'); btn.classList.replace('text-slate-700', 'text-rose-700'); btn.classList.add('animate-shake'); buttons.forEach(b => { if (b.innerText === quizWords[currentQuizIndex].chinese) { b.classList.replace('bg-slate-50', 'bg-emerald-50'); b.classList.replace('text-slate-700', 'text-emerald-700'); } }); } setTimeout(() => { currentQuizIndex++; renderQuizQuestion(); }, 1200); }
+        function backToStudyFromQuiz() { document.getElementById('quiz-result-phase').classList.add('hidden-phase'); document.getElementById('quiz-phase').classList.add('hidden-phase'); document.getElementById('success-area').classList.add('hidden-phase'); nextWordLogic(); }
+
         window.onload = initGame;
     </script>
 </body>
